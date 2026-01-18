@@ -3,12 +3,12 @@
     <html lang="es">
     <head>
         <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Mi Biblioteca</title>
         <style>
             :root { --bg: #1b2838; --card: #2a475e; --accent: #66c0f4; --text: #c7d5e0; --header: #171d25; }
-            body { background: var(--bg); color: var(--text); font-family: sans-serif; margin: 0; padding-top: 180px; }
+            body { background: var(--bg); color: var(--text); font-family: sans-serif; margin: 0; padding-top: 160px; }
             
-            /* Cabecera Fija */
             .fixed-header { 
                 position: fixed; top: 0; left: 0; right: 0; 
                 background: var(--header); z-index: 1000; 
@@ -16,44 +16,50 @@
                 border-bottom: 1px solid rgba(255,255,255,0.1);
             }
 
-            .title-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
-            .title-row h1 { font-size: 1.2rem; margin: 0; color: white; }
-            .counter { font-size: 0.8rem; background: rgba(255,255,255,0.1); padding: 2px 8px; border-radius: 10px; color: var(--accent); }
+            .title-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+            .title-row h1 { font-size: 1.1rem; margin: 0; color: white; display: flex; align-items: center; gap: 8px; }
+            .counter { font-size: 0.75rem; background: rgba(255,255,255,0.1); padding: 3px 10px; border-radius: 12px; color: var(--accent); }
 
-            .controls-grid { display: grid; gap: 10px; max-width: 1200px; margin: 0 auto; }
-            
-            /* Nivel 1: Orden y Años */
-            .row-1 { display: flex; gap: 30px; align-items: center; background: rgba(0,0,0,0.2); padding: 8px 15px; border-radius: 5px; }
-            .control-item { display: flex; align-items: center; gap: 10px; flex: 1; }
-            label { font-size: 0.7rem; color: var(--accent); font-weight: bold; text-transform: uppercase; white-space: nowrap; }
+            .controls-grid { display: grid; gap: 8px; max-width: 1100px; margin: 0 auto; }
+            .row-1 { display: flex; gap: 20px; align-items: center; background: rgba(0,0,0,0.2); padding: 8px 15px; border-radius: 5px; }
+            .row-2 { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
 
-            /* Slider */
-            .range-wrapper { position: relative; flex-grow: 1; height: 20px; display: flex; align-items: center; }
+            .control-item { display: flex; align-items: center; gap: 8px; flex: 1; }
+            label { font-size: 0.65rem; color: var(--accent); font-weight: bold; text-transform: uppercase; }
+
+            .range-wrapper { position: relative; flex-grow: 1; height: 18px; display: flex; align-items: center; }
             .slider-track { position: absolute; width: 100%; height: 4px; background: #3d4450; border-radius: 2px; }
             .slider-fill { position: absolute; height: 4px; background: var(--accent); border-radius: 2px; z-index: 2; }
-            input[type="range"] { position: absolute; width: 100%; pointer-events: none; appearance: none; background: none; z-index: 3; outline: none; margin: 0; }
-            input[type="range"]::-webkit-slider-thumb { appearance: none; width: 14px; height: 14px; background: white; border-radius: 2px; pointer-events: auto; cursor: pointer; }
+            input[type="range"] { position: absolute; width: 100%; pointer-events: none; appearance: none; background: none; z-index: 3; outline: none; }
+            input[type="range"]::-webkit-slider-thumb { appearance: none; width: 16px; height: 16px; background: white; border-radius: 2px; pointer-events: auto; cursor: pointer; }
 
-            /* Nivel 2: Buscar y Botones */
-            .row-2 { display: flex; gap: 15px; align-items: center; }
-            .search-input { background: #101822; color: white; border: 1px solid #3d4450; padding: 8px 12px; border-radius: 4px; width: 300px; font-size: 0.9rem; }
-            .store-filters { display: flex; flex-wrap: wrap; gap: 5px; }
-            .store-btn { background: #3d4450; color: white; border: none; padding: 4px 10px; border-radius: 2px; cursor: pointer; font-size: 0.75rem; }
+            .search-input { background: #101822; color: white; border: 1px solid #3d4450; padding: 8px 12px; border-radius: 4px; width: 250px; font-size: 0.85rem; }
+            .store-btn { background: #3d4450; color: white; border: none; padding: 5px 12px; border-radius: 2px; cursor: pointer; font-size: 0.75rem; }
             .store-btn.active { background: var(--accent); color: #1b2838; font-weight: bold; }
             .all-btn { border: 1px solid var(--accent); color: var(--accent); background: transparent; }
 
-            /* Cuadrícula de Juegos */
-            .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 20px; padding: 20px; max-width: 1400px; margin: 0 auto; }
-            .card { background: var(--card); border-radius: 4px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.3); transition: 0.2s; }
-            .card:hover { transform: translateY(-5px); box-shadow: 0 8px 25px rgba(0,0,0,0.5); }
-            .img-container { position: relative; height: 280px; background: #000; }
+            .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 15px; padding: 20px; max-width: 1400px; margin: 0 auto; }
+            .card { background: var(--card); border-radius: 4px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.4); }
+            .img-container { position: relative; height: 260px; background: #000; overflow: hidden; }
             .img-container img { width: 100%; height: 100%; object-fit: cover; position: absolute; transition: 0.4s; }
             .screenshot { opacity: 0; }
-            .card:hover .screenshot { opacity: 1; }
-            .info { padding: 12px; }
-            h2 { font-size: 0.9rem; margin: 0; color: white; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-            .meta { display: flex; justify-content: space-between; margin-top: 8px; font-size: 0.75rem; }
+            
+            @media (hover: hover) {
+                .card:hover .screenshot { opacity: 1; }
+                .card:hover { transform: translateY(-3px); }
+            }
+
+            .info { padding: 10px; }
+            h2 { font-size: 0.85rem; margin: 0; color: white; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+            .meta { display: flex; justify-content: space-between; margin-top: 8px; font-size: 0.7rem; }
             .badge { color: var(--accent); font-weight: bold; }
+
+            @media (max-width: 768px) {
+                body { padding-top: 220px; }
+                .row-1 { flex-direction: column; align-items: flex-start; gap: 8px; }
+                .search-input { width: 100%; }
+                .grid { grid-template-columns: repeat(2, 1fr); }
+            }
         </style>
     </head>
     <body>
@@ -61,21 +67,21 @@
             <div class="controls-grid">
                 <div class="title-row">
                     <h1>🎮 Mi Biblioteca de Juegos</h1>
-                    <span class="counter">Mostrando <span id="gameCount">0</span> / 82</span>
+                    <span class="counter">Visibles: <span id="gameCount">0</span> / 82</span>
                 </div>
                 
                 <div class="row-1">
-                    <div class="control-item" style="max-width: 250px;">
+                    <div class="control-item" style="max-width: 220px;">
                         <label>Ordenar:</label>
-                        <select id="sortOrder" onchange="applyFilters()" style="background:#101822; color:white; border:none; padding:5px; width:100%;">
-                            <option value="new">Novedades (Más nuevos)</option>
-                            <option value="old">Clásicos (Más antiguos)</option>
+                        <select id="sortOrder" onchange="applyFilters()" style="background:#101822; color:white; border:none; padding:6px; border-radius:4px; width:100%;">
+                            <option value="new">Novedades</option>
+                            <option value="old">Clásicos</option>
                             <option value="az">A - Z</option>
                             <option value="za">Z - A</option>
                         </select>
                     </div>
                     <div class="control-item">
-                        <label>Rango: <span id="yearLabel" style="color:white; min-width:80px;">1992 - 2025</span></label>
+                        <label>Años: <span id="yearLabel" style="color:white; min-width:70px;">1992 - 2025</span></label>
                         <div class="range-wrapper">
                             <div class="slider-track"></div>
                             <div class="slider-fill" id="sliderFill"></div>
@@ -86,7 +92,7 @@
                 </div>
 
                 <div class="row-2">
-                    <input type="text" id="searchBox" class="search-input" placeholder="Buscar juego..." onkeyup="applyFilters()">
+                    <input type="text" id="searchBox" class="search-input" placeholder="Buscar título..." onkeyup="applyFilters()">
                     <div class="store-filters">
                         <button class="store-btn all-btn" onclick="filterAll()">Todas</button><button class="store-btn active" onclick="toggleStore(this)">EPIC</button><button class="store-btn active" onclick="toggleStore(this)">GOG</button><button class="store-btn active" onclick="toggleStore(this)">Microsoft Store</button><button class="store-btn active" onclick="toggleStore(this)">STEAM</button>
                     </div>
@@ -108,19 +114,6 @@
                             </div>
                         </div>
                     </div>
-                    <div class="card" data-name="chivalry 2" data-year="2021" data-store="EPIC">
-                        <div class="img-container">
-                            <img src="img/chivalry-2_cover.jpg" class="cover" loading="lazy">
-                            <img src="img/chivalry-2_screen.jpg" class="screenshot" loading="lazy">
-                        </div>
-                        <div class="info">
-                            <h2>Chivalry 2</h2>
-                            <div class="meta">
-                                <span>📅 2021</span>
-                                <span class="badge">EPIC</span>
-                            </div>
-                        </div>
-                    </div>
                     <div class="card" data-name="chivalry: medieval warfare" data-year="2012" data-store="EPIC">
                         <div class="img-container">
                             <img src="img/chivalry-medieval-warfare_cover.jpg" class="cover" loading="lazy">
@@ -130,32 +123,6 @@
                             <h2>Chivalry: Medieval Warfare</h2>
                             <div class="meta">
                                 <span>📅 2012</span>
-                                <span class="badge">EPIC</span>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="card" data-name="control" data-year="2019" data-store="EPIC">
-                        <div class="img-container">
-                            <img src="img/control_cover.jpg" class="cover" loading="lazy">
-                            <img src="img/control_screen.jpg" class="screenshot" loading="lazy">
-                        </div>
-                        <div class="info">
-                            <h2>Control</h2>
-                            <div class="meta">
-                                <span>📅 2019</span>
-                                <span class="badge">EPIC</span>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="card" data-name="dead island 2" data-year="2023" data-store="EPIC">
-                        <div class="img-container">
-                            <img src="img/dead-island-2_cover.jpg" class="cover" loading="lazy">
-                            <img src="img/dead-island-2_screen.jpg" class="screenshot" loading="lazy">
-                        </div>
-                        <div class="info">
-                            <h2>Dead Island 2</h2>
-                            <div class="meta">
-                                <span>📅 2023</span>
                                 <span class="badge">EPIC</span>
                             </div>
                         </div>
@@ -1173,28 +1140,24 @@
             }
 
             function toggleStore(btn) { btn.classList.toggle('active'); applyFilters(); }
-            
-            function filterAll() {
-                document.querySelectorAll('.store-btn:not(.all-btn)').forEach(b => b.classList.add('active'));
-                applyFilters();
-            }
+            function filterAll() { document.querySelectorAll('.store-btn:not(.all-btn)').forEach(b => b.classList.add('active')); applyFilters(); }
 
             function applyFilters() {
                 const cards = Array.from(document.getElementsByClassName('card'));
-                const minYear = parseInt(document.getElementById('minRange').value), maxYear = parseInt(document.getElementById('maxRange').value);
+                const minY = parseInt(document.getElementById('minRange').value), maxY = parseInt(document.getElementById('maxRange').value);
                 const search = document.getElementById('searchBox').value.toLowerCase();
                 const activeStores = Array.from(document.querySelectorAll('.store-btn.active')).map(b => b.innerText.toLowerCase());
                 const sort = document.getElementById('sortOrder').value;
 
-                let visible = 0;
+                let count = 0;
                 cards.forEach(card => {
-                    const matches = (card.dataset.year >= minYear && card.dataset.year <= maxYear) &&
+                    const matches = (card.dataset.year >= minY && card.dataset.year <= maxY) &&
                                     card.dataset.name.includes(search) &&
                                     activeStores.includes(card.dataset.store.toLowerCase());
                     card.style.display = matches ? 'block' : 'none';
-                    if(matches) visible++;
+                    if(matches) count++;
                 });
-                document.getElementById('gameCount').innerText = visible;
+                document.getElementById('gameCount').innerText = count;
 
                 cards.sort((a, b) => {
                     if(sort === 'az') return a.dataset.name.localeCompare(b.dataset.name);
@@ -1202,7 +1165,8 @@
                     if(sort === 'new') return b.dataset.year - a.dataset.year;
                     return a.dataset.year - b.dataset.year;
                 });
-                cards.forEach(c => document.getElementById('gameGrid').appendChild(c));
+                const grid = document.getElementById('gameGrid');
+                cards.forEach(c => grid.appendChild(c));
             }
             window.onload = updateSlider;
         </script>
