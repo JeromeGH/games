@@ -1,0 +1,1211 @@
+
+    <!DOCTYPE html>
+    <html lang="es">
+    <head>
+        <meta charset="UTF-8">
+        <title>Mi Biblioteca</title>
+        <style>
+            :root { --bg: #1b2838; --card: #2a475e; --accent: #66c0f4; --text: #c7d5e0; --header: #171d25; }
+            body { background: var(--bg); color: var(--text); font-family: sans-serif; margin: 0; padding-top: 180px; }
+            
+            /* Cabecera Fija */
+            .fixed-header { 
+                position: fixed; top: 0; left: 0; right: 0; 
+                background: var(--header); z-index: 1000; 
+                padding: 10px 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+                border-bottom: 1px solid rgba(255,255,255,0.1);
+            }
+
+            .title-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+            .title-row h1 { font-size: 1.2rem; margin: 0; color: white; }
+            .counter { font-size: 0.8rem; background: rgba(255,255,255,0.1); padding: 2px 8px; border-radius: 10px; color: var(--accent); }
+
+            .controls-grid { display: grid; gap: 10px; max-width: 1200px; margin: 0 auto; }
+            
+            /* Nivel 1: Orden y Años */
+            .row-1 { display: flex; gap: 30px; align-items: center; background: rgba(0,0,0,0.2); padding: 8px 15px; border-radius: 5px; }
+            .control-item { display: flex; align-items: center; gap: 10px; flex: 1; }
+            label { font-size: 0.7rem; color: var(--accent); font-weight: bold; text-transform: uppercase; white-space: nowrap; }
+
+            /* Slider */
+            .range-wrapper { position: relative; flex-grow: 1; height: 20px; display: flex; align-items: center; }
+            .slider-track { position: absolute; width: 100%; height: 4px; background: #3d4450; border-radius: 2px; }
+            .slider-fill { position: absolute; height: 4px; background: var(--accent); border-radius: 2px; z-index: 2; }
+            input[type="range"] { position: absolute; width: 100%; pointer-events: none; appearance: none; background: none; z-index: 3; outline: none; margin: 0; }
+            input[type="range"]::-webkit-slider-thumb { appearance: none; width: 14px; height: 14px; background: white; border-radius: 2px; pointer-events: auto; cursor: pointer; }
+
+            /* Nivel 2: Buscar y Botones */
+            .row-2 { display: flex; gap: 15px; align-items: center; }
+            .search-input { background: #101822; color: white; border: 1px solid #3d4450; padding: 8px 12px; border-radius: 4px; width: 300px; font-size: 0.9rem; }
+            .store-filters { display: flex; flex-wrap: wrap; gap: 5px; }
+            .store-btn { background: #3d4450; color: white; border: none; padding: 4px 10px; border-radius: 2px; cursor: pointer; font-size: 0.75rem; }
+            .store-btn.active { background: var(--accent); color: #1b2838; font-weight: bold; }
+            .all-btn { border: 1px solid var(--accent); color: var(--accent); background: transparent; }
+
+            /* Cuadrícula de Juegos */
+            .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 20px; padding: 20px; max-width: 1400px; margin: 0 auto; }
+            .card { background: var(--card); border-radius: 4px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.3); transition: 0.2s; }
+            .card:hover { transform: translateY(-5px); box-shadow: 0 8px 25px rgba(0,0,0,0.5); }
+            .img-container { position: relative; height: 280px; background: #000; }
+            .img-container img { width: 100%; height: 100%; object-fit: cover; position: absolute; transition: 0.4s; }
+            .screenshot { opacity: 0; }
+            .card:hover .screenshot { opacity: 1; }
+            .info { padding: 12px; }
+            h2 { font-size: 0.9rem; margin: 0; color: white; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+            .meta { display: flex; justify-content: space-between; margin-top: 8px; font-size: 0.75rem; }
+            .badge { color: var(--accent); font-weight: bold; }
+        </style>
+    </head>
+    <body>
+        <div class="fixed-header">
+            <div class="controls-grid">
+                <div class="title-row">
+                    <h1>🎮 Mi Biblioteca de Juegos</h1>
+                    <span class="counter">Mostrando <span id="gameCount">0</span> / 82</span>
+                </div>
+                
+                <div class="row-1">
+                    <div class="control-item" style="max-width: 250px;">
+                        <label>Ordenar:</label>
+                        <select id="sortOrder" onchange="applyFilters()" style="background:#101822; color:white; border:none; padding:5px; width:100%;">
+                            <option value="new">Novedades (Más nuevos)</option>
+                            <option value="old">Clásicos (Más antiguos)</option>
+                            <option value="az">A - Z</option>
+                            <option value="za">Z - A</option>
+                        </select>
+                    </div>
+                    <div class="control-item">
+                        <label>Rango: <span id="yearLabel" style="color:white; min-width:80px;">1992 - 2025</span></label>
+                        <div class="range-wrapper">
+                            <div class="slider-track"></div>
+                            <div class="slider-fill" id="sliderFill"></div>
+                            <input type="range" id="minRange" min="1992" max="2025" value="1992" oninput="updateSlider()">
+                            <input type="range" id="maxRange" min="1992" max="2025" value="2025" oninput="updateSlider()">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row-2">
+                    <input type="text" id="searchBox" class="search-input" placeholder="Buscar juego..." onkeyup="applyFilters()">
+                    <div class="store-filters">
+                        <button class="store-btn all-btn" onclick="filterAll()">Todas</button><button class="store-btn active" onclick="toggleStore(this)">EPIC</button><button class="store-btn active" onclick="toggleStore(this)">GOG</button><button class="store-btn active" onclick="toggleStore(this)">Microsoft Store</button><button class="store-btn active" onclick="toggleStore(this)">STEAM</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid" id="gameGrid">
+                    <div class="card" data-name="borderlands 2" data-year="2012" data-store="EPIC">
+                        <div class="img-container">
+                            <img src="img/borderlands-2_cover.jpg" class="cover" loading="lazy">
+                            <img src="img/borderlands-2_screen.jpg" class="screenshot" loading="lazy">
+                        </div>
+                        <div class="info">
+                            <h2>Borderlands 2</h2>
+                            <div class="meta">
+                                <span>📅 2012</span>
+                                <span class="badge">EPIC</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card" data-name="chivalry 2" data-year="2021" data-store="EPIC">
+                        <div class="img-container">
+                            <img src="img/chivalry-2_cover.jpg" class="cover" loading="lazy">
+                            <img src="img/chivalry-2_screen.jpg" class="screenshot" loading="lazy">
+                        </div>
+                        <div class="info">
+                            <h2>Chivalry 2</h2>
+                            <div class="meta">
+                                <span>📅 2021</span>
+                                <span class="badge">EPIC</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card" data-name="chivalry: medieval warfare" data-year="2012" data-store="EPIC">
+                        <div class="img-container">
+                            <img src="img/chivalry-medieval-warfare_cover.jpg" class="cover" loading="lazy">
+                            <img src="img/chivalry-medieval-warfare_screen.jpg" class="screenshot" loading="lazy">
+                        </div>
+                        <div class="info">
+                            <h2>Chivalry: Medieval Warfare</h2>
+                            <div class="meta">
+                                <span>📅 2012</span>
+                                <span class="badge">EPIC</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card" data-name="control" data-year="2019" data-store="EPIC">
+                        <div class="img-container">
+                            <img src="img/control_cover.jpg" class="cover" loading="lazy">
+                            <img src="img/control_screen.jpg" class="screenshot" loading="lazy">
+                        </div>
+                        <div class="info">
+                            <h2>Control</h2>
+                            <div class="meta">
+                                <span>📅 2019</span>
+                                <span class="badge">EPIC</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card" data-name="dead island 2" data-year="2023" data-store="EPIC">
+                        <div class="img-container">
+                            <img src="img/dead-island-2_cover.jpg" class="cover" loading="lazy">
+                            <img src="img/dead-island-2_screen.jpg" class="screenshot" loading="lazy">
+                        </div>
+                        <div class="info">
+                            <h2>Dead Island 2</h2>
+                            <div class="meta">
+                                <span>📅 2023</span>
+                                <span class="badge">EPIC</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card" data-name="death stranding" data-year="2019" data-store="EPIC">
+                        <div class="img-container">
+                            <img src="img/death-stranding_cover.jpg" class="cover" loading="lazy">
+                            <img src="img/death-stranding_screen.jpg" class="screenshot" loading="lazy">
+                        </div>
+                        <div class="info">
+                            <h2>Death Stranding</h2>
+                            <div class="meta">
+                                <span>📅 2019</span>
+                                <span class="badge">EPIC</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card" data-name="death stranding director's cut" data-year="2021" data-store="EPIC">
+                        <div class="img-container">
+                            <img src="img/death-stranding-directors-cut_cover.jpg" class="cover" loading="lazy">
+                            <img src="img/death-stranding-directors-cut_screen.jpg" class="screenshot" loading="lazy">
+                        </div>
+                        <div class="info">
+                            <h2>Death Stranding Director's Cut</h2>
+                            <div class="meta">
+                                <span>📅 2021</span>
+                                <span class="badge">EPIC</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card" data-name="deathloop" data-year="2021" data-store="EPIC">
+                        <div class="img-container">
+                            <img src="img/deathloop-2_cover.jpg" class="cover" loading="lazy">
+                            <img src="img/deathloop-2_screen.jpg" class="screenshot" loading="lazy">
+                        </div>
+                        <div class="info">
+                            <h2>Deathloop</h2>
+                            <div class="meta">
+                                <span>📅 2021</span>
+                                <span class="badge">EPIC</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card" data-name="deliver at all costs (itch)" data-year="0000" data-store="EPIC">
+                        <div class="img-container">
+                            <img src="img/deliver-at-all-costs_cover.jpg" class="cover" loading="lazy">
+                            <img src="img/deliver-at-all-costs_screen.jpg" class="screenshot" loading="lazy">
+                        </div>
+                        <div class="info">
+                            <h2>Deliver At All Costs (itch)</h2>
+                            <div class="meta">
+                                <span>📅 0000</span>
+                                <span class="badge">EPIC</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card" data-name="dishonored definitive edition" data-year="2015" data-store="EPIC">
+                        <div class="img-container">
+                            <img src="img/dishonored-definitive-edition_cover.jpg" class="cover" loading="lazy">
+                            <img src="img/dishonored-definitive-edition_screen.jpg" class="screenshot" loading="lazy">
+                        </div>
+                        <div class="info">
+                            <h2>Dishonored Definitive Edition</h2>
+                            <div class="meta">
+                                <span>📅 2015</span>
+                                <span class="badge">EPIC</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card" data-name="dying light: the following - enhanced edition" data-year="2015" data-store="EPIC">
+                        <div class="img-container">
+                            <img src="img/dying-light-the-following-enhanced-edition_cover.jpg" class="cover" loading="lazy">
+                            <img src="img/dying-light-the-following-enhanced-edition_screen.jpg" class="screenshot" loading="lazy">
+                        </div>
+                        <div class="info">
+                            <h2>Dying Light: The Following - Enhanced Edition</h2>
+                            <div class="meta">
+                                <span>📅 2015</span>
+                                <span class="badge">EPIC</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card" data-name="fallout 2" data-year="1998" data-store="EPIC">
+                        <div class="img-container">
+                            <img src="img/fallout-2-a-post-nuclear-role-playing-game_cover.jpg" class="cover" loading="lazy">
+                            <img src="img/fallout-2-a-post-nuclear-role-playing-game_screen.jpg" class="screenshot" loading="lazy">
+                        </div>
+                        <div class="info">
+                            <h2>Fallout 2</h2>
+                            <div class="meta">
+                                <span>📅 1998</span>
+                                <span class="badge">EPIC</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card" data-name="fallout tactics: brotherhood of steel" data-year="2001" data-store="EPIC">
+                        <div class="img-container">
+                            <img src="img/fallout-tactics-brotherhood-of-steel_cover.jpg" class="cover" loading="lazy">
+                            <img src="img/fallout-tactics-brotherhood-of-steel_screen.jpg" class="screenshot" loading="lazy">
+                        </div>
+                        <div class="info">
+                            <h2>Fallout Tactics: Brotherhood of Steel</h2>
+                            <div class="meta">
+                                <span>📅 2001</span>
+                                <span class="badge">EPIC</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card" data-name="fallout" data-year="1997" data-store="EPIC">
+                        <div class="img-container">
+                            <img src="img/fallout-a-post-nuclear-role-playing-game_cover.jpg" class="cover" loading="lazy">
+                            <img src="img/fallout-a-post-nuclear-role-playing-game_screen.jpg" class="screenshot" loading="lazy">
+                        </div>
+                        <div class="info">
+                            <h2>Fallout</h2>
+                            <div class="meta">
+                                <span>📅 1997</span>
+                                <span class="badge">EPIC</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card" data-name="grand theft auto v" data-year="2013" data-store="EPIC">
+                        <div class="img-container">
+                            <img src="img/grand-theft-auto-v_cover.jpg" class="cover" loading="lazy">
+                            <img src="img/grand-theft-auto-v_screen.jpg" class="screenshot" loading="lazy">
+                        </div>
+                        <div class="info">
+                            <h2>Grand Theft Auto V</h2>
+                            <div class="meta">
+                                <span>📅 2013</span>
+                                <span class="badge">EPIC</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card" data-name="grand theft auto v enhanced" data-year="0000" data-store="EPIC">
+                        <div class="img-container">
+                            <img src="img/grand-theft-auto-v-enhanced_cover.jpg" class="cover" loading="lazy">
+                            <img src="img/grand-theft-auto-v-enhanced_screen.jpg" class="screenshot" loading="lazy">
+                        </div>
+                        <div class="info">
+                            <h2>Grand Theft Auto V Enhanced</h2>
+                            <div class="meta">
+                                <span>📅 0000</span>
+                                <span class="badge">EPIC</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card" data-name="hogwarts legacy" data-year="2023" data-store="EPIC">
+                        <div class="img-container">
+                            <img src="img/hogwarts-legacy_cover.jpg" class="cover" loading="lazy">
+                            <img src="img/hogwarts-legacy_screen.jpg" class="screenshot" loading="lazy">
+                        </div>
+                        <div class="info">
+                            <h2>Hogwarts Legacy</h2>
+                            <div class="meta">
+                                <span>📅 2023</span>
+                                <span class="badge">EPIC</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card" data-name="limbo" data-year="2010" data-store="EPIC">
+                        <div class="img-container">
+                            <img src="img/limbo_cover.jpg" class="cover" loading="lazy">
+                            <img src="img/limbo_screen.jpg" class="screenshot" loading="lazy">
+                        </div>
+                        <div class="info">
+                            <h2>Limbo</h2>
+                            <div class="meta">
+                                <span>📅 2010</span>
+                                <span class="badge">EPIC</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card" data-name="payday 2" data-year="2013" data-store="EPIC">
+                        <div class="img-container">
+                            <img src="img/payday-2_cover.jpg" class="cover" loading="lazy">
+                            <img src="img/payday-2_screen.jpg" class="screenshot" loading="lazy">
+                        </div>
+                        <div class="info">
+                            <h2>PAYDAY 2</h2>
+                            <div class="meta">
+                                <span>📅 2013</span>
+                                <span class="badge">EPIC</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card" data-name="prey" data-year="2017" data-store="EPIC">
+                        <div class="img-container">
+                            <img src="img/prey_cover.jpg" class="cover" loading="lazy">
+                            <img src="img/prey_screen.jpg" class="screenshot" loading="lazy">
+                        </div>
+                        <div class="info">
+                            <h2>Prey</h2>
+                            <div class="meta">
+                                <span>📅 2017</span>
+                                <span class="badge">EPIC</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card" data-name="rise of the tomb raider: 20 year celebration" data-year="2016" data-store="EPIC">
+                        <div class="img-container">
+                            <img src="img/rise-of-the-tomb-raider-20-year-celebration_cover.jpg" class="cover" loading="lazy">
+                            <img src="img/rise-of-the-tomb-raider-20-year-celebration_screen.jpg" class="screenshot" loading="lazy">
+                        </div>
+                        <div class="info">
+                            <h2>Rise of the Tomb Raider: 20 Year Celebration</h2>
+                            <div class="meta">
+                                <span>📅 2016</span>
+                                <span class="badge">EPIC</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card" data-name="shadow of the tomb raider: definitive edition" data-year="2019" data-store="EPIC">
+                        <div class="img-container">
+                            <img src="img/shadow-of-the-tomb-raider-definitive-edition_cover.jpg" class="cover" loading="lazy">
+                            <img src="img/shadow-of-the-tomb-raider-definitive-edition_screen.jpg" class="screenshot" loading="lazy">
+                        </div>
+                        <div class="info">
+                            <h2>Shadow of the Tomb Raider: Definitive Edition</h2>
+                            <div class="meta">
+                                <span>📅 2019</span>
+                                <span class="badge">EPIC</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card" data-name="sid meier’s civilization vi" data-year="2016" data-store="EPIC">
+                        <div class="img-container">
+                            <img src="img/civilization-vi_cover.jpg" class="cover" loading="lazy">
+                            <img src="img/civilization-vi_screen.jpg" class="screenshot" loading="lazy">
+                        </div>
+                        <div class="info">
+                            <h2>Sid Meier’s Civilization VI</h2>
+                            <div class="meta">
+                                <span>📅 2016</span>
+                                <span class="badge">EPIC</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card" data-name="the outer worlds: spacer's choice edition" data-year="2023" data-store="EPIC">
+                        <div class="img-container">
+                            <img src="img/the-outer-worlds-spacers-choice-edition_cover.jpg" class="cover" loading="lazy">
+                            <img src="img/the-outer-worlds-spacers-choice-edition_screen.jpg" class="screenshot" loading="lazy">
+                        </div>
+                        <div class="info">
+                            <h2>The Outer Worlds: Spacer's Choice Edition</h2>
+                            <div class="meta">
+                                <span>📅 2023</span>
+                                <span class="badge">EPIC</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card" data-name="tomb raider: definitive edition" data-year="2014" data-store="EPIC">
+                        <div class="img-container">
+                            <img src="img/tomb-raider-goty_cover.jpg" class="cover" loading="lazy">
+                            <img src="img/tomb-raider-goty_screen.jpg" class="screenshot" loading="lazy">
+                        </div>
+                        <div class="info">
+                            <h2>Tomb Raider: Definitive Edition</h2>
+                            <div class="meta">
+                                <span>📅 2014</span>
+                                <span class="badge">EPIC</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card" data-name="unreal engine: test project" data-year="2021" data-store="EPIC">
+                        <div class="img-container">
+                            <img src="img/unreal-engine-test-project_cover.jpg" class="cover" loading="lazy">
+                            <img src="img/unreal-engine-test-project_screen.jpg" class="screenshot" loading="lazy">
+                        </div>
+                        <div class="info">
+                            <h2>Unreal Engine: Test Project</h2>
+                            <div class="meta">
+                                <span>📅 2021</span>
+                                <span class="badge">EPIC</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card" data-name="viewfinder" data-year="2023" data-store="EPIC">
+                        <div class="img-container">
+                            <img src="img/v-i-e-w-f-i-n-d-e-r_cover.jpg" class="cover" loading="lazy">
+                            <img src="img/v-i-e-w-f-i-n-d-e-r_screen.jpg" class="screenshot" loading="lazy">
+                        </div>
+                        <div class="info">
+                            <h2>Viewfinder</h2>
+                            <div class="meta">
+                                <span>📅 2023</span>
+                                <span class="badge">EPIC</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card" data-name="wolfenstein: the new order" data-year="2014" data-store="EPIC">
+                        <div class="img-container">
+                            <img src="img/wolfenstein-the-new-order_cover.jpg" class="cover" loading="lazy">
+                            <img src="img/wolfenstein-the-new-order_screen.jpg" class="screenshot" loading="lazy">
+                        </div>
+                        <div class="info">
+                            <h2>Wolfenstein: The New Order</h2>
+                            <div class="meta">
+                                <span>📅 2014</span>
+                                <span class="badge">EPIC</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card" data-name="age of empires: definitive edition" data-year="2018" data-store="STEAM">
+                        <div class="img-container">
+                            <img src="img/age-of-empires-definitive-edition_cover.jpg" class="cover" loading="lazy">
+                            <img src="img/age-of-empires-definitive-edition_screen.jpg" class="screenshot" loading="lazy">
+                        </div>
+                        <div class="info">
+                            <h2>Age of Empires: Definitive Edition</h2>
+                            <div class="meta">
+                                <span>📅 2018</span>
+                                <span class="badge">STEAM</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card" data-name="black mesa" data-year="2020" data-store="STEAM">
+                        <div class="img-container">
+                            <img src="img/black-mesa_cover.jpg" class="cover" loading="lazy">
+                            <img src="img/black-mesa_screen.jpg" class="screenshot" loading="lazy">
+                        </div>
+                        <div class="info">
+                            <h2>Black Mesa</h2>
+                            <div class="meta">
+                                <span>📅 2020</span>
+                                <span class="badge">STEAM</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card" data-name="borderlands 2" data-year="2012" data-store="STEAM">
+                        <div class="img-container">
+                            <img src="img/borderlands-2_cover.jpg" class="cover" loading="lazy">
+                            <img src="img/borderlands-2_screen.jpg" class="screenshot" loading="lazy">
+                        </div>
+                        <div class="info">
+                            <h2>Borderlands 2</h2>
+                            <div class="meta">
+                                <span>📅 2012</span>
+                                <span class="badge">STEAM</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card" data-name="godstrike" data-year="2021" data-store="STEAM">
+                        <div class="img-container">
+                            <img src="img/godstrike_cover.jpg" class="cover" loading="lazy">
+                            <img src="img/godstrike_screen.jpg" class="screenshot" loading="lazy">
+                        </div>
+                        <div class="info">
+                            <h2>Godstrike</h2>
+                            <div class="meta">
+                                <span>📅 2021</span>
+                                <span class="badge">STEAM</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card" data-name="crimson diner- demo" data-year="2022" data-store="STEAM">
+                        <div class="img-container">
+                            <img src="img/crimson-diner-demo_cover.jpg" class="cover" loading="lazy">
+                            <img src="img/crimson-diner-demo_screen.jpg" class="screenshot" loading="lazy">
+                        </div>
+                        <div class="info">
+                            <h2>Crimson Diner- Demo</h2>
+                            <div class="meta">
+                                <span>📅 2022</span>
+                                <span class="badge">STEAM</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card" data-name="goo-b3-r" data-year="2025" data-store="STEAM">
+                        <div class="img-container">
+                            <img src="img/goo-b3-r_cover.jpg" class="cover" loading="lazy">
+                            <img src="img/goo-b3-r_screen.jpg" class="screenshot" loading="lazy">
+                        </div>
+                        <div class="info">
+                            <h2>GOO-B3-R</h2>
+                            <div class="meta">
+                                <span>📅 2025</span>
+                                <span class="badge">STEAM</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card" data-name="half-life" data-year="1998" data-store="STEAM">
+                        <div class="img-container">
+                            <img src="img/half-life_cover.jpg" class="cover" loading="lazy">
+                            <img src="img/half-life_screen.jpg" class="screenshot" loading="lazy">
+                        </div>
+                        <div class="info">
+                            <h2>Half-Life</h2>
+                            <div class="meta">
+                                <span>📅 1998</span>
+                                <span class="badge">STEAM</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card" data-name="half-life 2" data-year="2004" data-store="STEAM">
+                        <div class="img-container">
+                            <img src="img/half-life-2_cover.jpg" class="cover" loading="lazy">
+                            <img src="img/half-life-2_screen.jpg" class="screenshot" loading="lazy">
+                        </div>
+                        <div class="info">
+                            <h2>Half-Life 2</h2>
+                            <div class="meta">
+                                <span>📅 2004</span>
+                                <span class="badge">STEAM</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card" data-name="half-life 2: deathmatch" data-year="2004" data-store="STEAM">
+                        <div class="img-container">
+                            <img src="img/half-life-2-deathmatch_cover.jpg" class="cover" loading="lazy">
+                            <img src="img/half-life-2-deathmatch_screen.jpg" class="screenshot" loading="lazy">
+                        </div>
+                        <div class="info">
+                            <h2>Half-Life 2: Deathmatch</h2>
+                            <div class="meta">
+                                <span>📅 2004</span>
+                                <span class="badge">STEAM</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card" data-name="half-life 2: update" data-year="2015" data-store="STEAM">
+                        <div class="img-container">
+                            <img src="img/half-life-2-update_cover.jpg" class="cover" loading="lazy">
+                            <img src="img/half-life-2-update_screen.jpg" class="screenshot" loading="lazy">
+                        </div>
+                        <div class="info">
+                            <h2>Half-Life 2: Update</h2>
+                            <div class="meta">
+                                <span>📅 2015</span>
+                                <span class="badge">STEAM</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card" data-name="half-life deathmatch: source" data-year="2006" data-store="STEAM">
+                        <div class="img-container">
+                            <img src="img/half-life-deathmatch-source_cover.jpg" class="cover" loading="lazy">
+                            <img src="img/half-life-deathmatch-source_screen.jpg" class="screenshot" loading="lazy">
+                        </div>
+                        <div class="info">
+                            <h2>Half-Life Deathmatch: Source</h2>
+                            <div class="meta">
+                                <span>📅 2006</span>
+                                <span class="badge">STEAM</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card" data-name="infinitode 2 - infinite tower defense" data-year="2021" data-store="STEAM">
+                        <div class="img-container">
+                            <img src="img/infinitode-2-infinite-tower-defense_cover.jpg" class="cover" loading="lazy">
+                            <img src="img/infinitode-2-infinite-tower-defense_screen.jpg" class="screenshot" loading="lazy">
+                        </div>
+                        <div class="info">
+                            <h2>Infinitode 2 - Infinite Tower Defense</h2>
+                            <div class="meta">
+                                <span>📅 2021</span>
+                                <span class="badge">STEAM</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card" data-name="limbo" data-year="2010" data-store="STEAM">
+                        <div class="img-container">
+                            <img src="img/limbo_cover.jpg" class="cover" loading="lazy">
+                            <img src="img/limbo_screen.jpg" class="screenshot" loading="lazy">
+                        </div>
+                        <div class="info">
+                            <h2>Limbo</h2>
+                            <div class="meta">
+                                <span>📅 2010</span>
+                                <span class="badge">STEAM</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card" data-name="cosmo's cosmic adventure" data-year="1992" data-store="STEAM">
+                        <div class="img-container">
+                            <img src="img/cosmos-cosmic-adventure_cover.jpg" class="cover" loading="lazy">
+                            <img src="img/cosmos-cosmic-adventure_screen.jpg" class="screenshot" loading="lazy">
+                        </div>
+                        <div class="info">
+                            <h2>Cosmo's Cosmic Adventure</h2>
+                            <div class="meta">
+                                <span>📅 1992</span>
+                                <span class="badge">STEAM</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card" data-name="portal" data-year="2007" data-store="STEAM">
+                        <div class="img-container">
+                            <img src="img/portal_cover.jpg" class="cover" loading="lazy">
+                            <img src="img/portal_screen.jpg" class="screenshot" loading="lazy">
+                        </div>
+                        <div class="info">
+                            <h2>Portal</h2>
+                            <div class="meta">
+                                <span>📅 2007</span>
+                                <span class="badge">STEAM</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card" data-name="portal 2" data-year="2011" data-store="STEAM">
+                        <div class="img-container">
+                            <img src="img/portal-2_cover.jpg" class="cover" loading="lazy">
+                            <img src="img/portal-2_screen.jpg" class="screenshot" loading="lazy">
+                        </div>
+                        <div class="info">
+                            <h2>Portal 2</h2>
+                            <div class="meta">
+                                <span>📅 2011</span>
+                                <span class="badge">STEAM</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card" data-name="portal reloaded" data-year="2021" data-store="STEAM">
+                        <div class="img-container">
+                            <img src="img/portal-reloaded_cover.jpg" class="cover" loading="lazy">
+                            <img src="img/portal-reloaded_screen.jpg" class="screenshot" loading="lazy">
+                        </div>
+                        <div class="info">
+                            <h2>Portal Reloaded</h2>
+                            <div class="meta">
+                                <span>📅 2021</span>
+                                <span class="badge">STEAM</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card" data-name="portal: revolution" data-year="2024" data-store="STEAM">
+                        <div class="img-container">
+                            <img src="img/portal-revolution_cover.jpg" class="cover" loading="lazy">
+                            <img src="img/portal-revolution_screen.jpg" class="screenshot" loading="lazy">
+                        </div>
+                        <div class="info">
+                            <h2>Portal: Revolution</h2>
+                            <div class="meta">
+                                <span>📅 2024</span>
+                                <span class="badge">STEAM</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card" data-name="portal stories: mel" data-year="2015" data-store="STEAM">
+                        <div class="img-container">
+                            <img src="img/portal-stories-mel_cover.jpg" class="cover" loading="lazy">
+                            <img src="img/portal-stories-mel_screen.jpg" class="screenshot" loading="lazy">
+                        </div>
+                        <div class="info">
+                            <h2>Portal Stories: Mel</h2>
+                            <div class="meta">
+                                <span>📅 2015</span>
+                                <span class="badge">STEAM</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card" data-name="portal with rtx" data-year="2022" data-store="STEAM">
+                        <div class="img-container">
+                            <img src="img/portal-with-rtx_cover.jpg" class="cover" loading="lazy">
+                            <img src="img/portal-with-rtx_screen.jpg" class="screenshot" loading="lazy">
+                        </div>
+                        <div class="info">
+                            <h2>Portal with RTX</h2>
+                            <div class="meta">
+                                <span>📅 2022</span>
+                                <span class="badge">STEAM</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card" data-name="quake champions" data-year="2017" data-store="STEAM">
+                        <div class="img-container">
+                            <img src="img/quake-champions_cover.jpg" class="cover" loading="lazy">
+                            <img src="img/quake-champions_screen.jpg" class="screenshot" loading="lazy">
+                        </div>
+                        <div class="info">
+                            <h2>Quake Champions</h2>
+                            <div class="meta">
+                                <span>📅 2017</span>
+                                <span class="badge">STEAM</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card" data-name="quake ii rtx" data-year="2019" data-store="STEAM">
+                        <div class="img-container">
+                            <img src="img/quake-ii-rtx_cover.jpg" class="cover" loading="lazy">
+                            <img src="img/quake-ii-rtx_screen.jpg" class="screenshot" loading="lazy">
+                        </div>
+                        <div class="info">
+                            <h2>Quake II RTX</h2>
+                            <div class="meta">
+                                <span>📅 2019</span>
+                                <span class="badge">STEAM</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card" data-name="robocop: rogue city" data-year="2023" data-store="STEAM">
+                        <div class="img-container">
+                            <img src="img/robocop-rogue-city_cover.jpg" class="cover" loading="lazy">
+                            <img src="img/robocop-rogue-city_screen.jpg" class="screenshot" loading="lazy">
+                        </div>
+                        <div class="info">
+                            <h2>RoboCop: Rogue City</h2>
+                            <div class="meta">
+                                <span>📅 2023</span>
+                                <span class="badge">STEAM</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card" data-name="team fortress 2" data-year="2007" data-store="STEAM">
+                        <div class="img-container">
+                            <img src="img/team-fortress-2_cover.jpg" class="cover" loading="lazy">
+                            <img src="img/team-fortress-2_screen.jpg" class="screenshot" loading="lazy">
+                        </div>
+                        <div class="info">
+                            <h2>Team Fortress 2</h2>
+                            <div class="meta">
+                                <span>📅 2007</span>
+                                <span class="badge">STEAM</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card" data-name="tom clancy's rainbow six siege" data-year="2015" data-store="STEAM">
+                        <div class="img-container">
+                            <img src="img/tom-clancys-rainbow-six-siege-2_cover.jpg" class="cover" loading="lazy">
+                            <img src="img/tom-clancys-rainbow-six-siege-2_screen.jpg" class="screenshot" loading="lazy">
+                        </div>
+                        <div class="info">
+                            <h2>Tom Clancy's Rainbow Six Siege</h2>
+                            <div class="meta">
+                                <span>📅 2015</span>
+                                <span class="badge">STEAM</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card" data-name="tom clancy's rainbow six siege" data-year="2015" data-store="STEAM">
+                        <div class="img-container">
+                            <img src="img/tom-clancys-rainbow-six-siege-2_cover.jpg" class="cover" loading="lazy">
+                            <img src="img/tom-clancys-rainbow-six-siege-2_screen.jpg" class="screenshot" loading="lazy">
+                        </div>
+                        <div class="info">
+                            <h2>Tom Clancy's Rainbow Six Siege</h2>
+                            <div class="meta">
+                                <span>📅 2015</span>
+                                <span class="badge">STEAM</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card" data-name="viewfinder" data-year="2023" data-store="STEAM">
+                        <div class="img-container">
+                            <img src="img/v-i-e-w-f-i-n-d-e-r_cover.jpg" class="cover" loading="lazy">
+                            <img src="img/v-i-e-w-f-i-n-d-e-r_screen.jpg" class="screenshot" loading="lazy">
+                        </div>
+                        <div class="info">
+                            <h2>Viewfinder</h2>
+                            <div class="meta">
+                                <span>📅 2023</span>
+                                <span class="badge">STEAM</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card" data-name="another world – 20th anniversary edition" data-year="2011" data-store="GOG">
+                        <div class="img-container">
+                            <img src="img/another-world-20th_cover.jpg" class="cover" loading="lazy">
+                            <img src="img/another-world-20th_screen.jpg" class="screenshot" loading="lazy">
+                        </div>
+                        <div class="info">
+                            <h2>Another World – 20th Anniversary Edition</h2>
+                            <div class="meta">
+                                <span>📅 2011</span>
+                                <span class="badge">GOG</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card" data-name="tomb raider i•ii•iii remastered" data-year="2024" data-store="GOG">
+                        <div class="img-container">
+                            <img src="img/tomb-raider-i-iii-remastered_cover.jpg" class="cover" loading="lazy">
+                            <img src="img/tomb-raider-i-iii-remastered_screen.jpg" class="screenshot" loading="lazy">
+                        </div>
+                        <div class="info">
+                            <h2>Tomb Raider I•II•III Remastered</h2>
+                            <div class="meta">
+                                <span>📅 2024</span>
+                                <span class="badge">GOG</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card" data-name="saints row: the third remastered" data-year="2020" data-store="GOG">
+                        <div class="img-container">
+                            <img src="img/saints-row-the-third-remastered_cover.jpg" class="cover" loading="lazy">
+                            <img src="img/saints-row-the-third-remastered_screen.jpg" class="screenshot" loading="lazy">
+                        </div>
+                        <div class="info">
+                            <h2>Saints Row: The Third Remastered</h2>
+                            <div class="meta">
+                                <span>📅 2020</span>
+                                <span class="badge">GOG</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card" data-name="star wars galactic battlegrounds saga" data-year="2001" data-store="GOG">
+                        <div class="img-container">
+                            <img src="img/star-wars-galactic-battlegrounds-saga_cover.jpg" class="cover" loading="lazy">
+                            <img src="img/star-wars-galactic-battlegrounds-saga_screen.jpg" class="screenshot" loading="lazy">
+                        </div>
+                        <div class="info">
+                            <h2>STAR WARS Galactic Battlegrounds Saga</h2>
+                            <div class="meta">
+                                <span>📅 2001</span>
+                                <span class="badge">GOG</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card" data-name="lego star wars - the complete saga" data-year="2007" data-store="GOG">
+                        <div class="img-container">
+                            <img src="img/lego-star-wars-tcs_cover.jpg" class="cover" loading="lazy">
+                            <img src="img/lego-star-wars-tcs_screen.jpg" class="screenshot" loading="lazy">
+                        </div>
+                        <div class="info">
+                            <h2>LEGO Star Wars - The Complete Saga</h2>
+                            <div class="meta">
+                                <span>📅 2007</span>
+                                <span class="badge">GOG</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card" data-name="metro 2033 redux" data-year="2014" data-store="GOG">
+                        <div class="img-container">
+                            <img src="img/metro-redux_cover.jpg" class="cover" loading="lazy">
+                            <img src="img/metro-redux_screen.jpg" class="screenshot" loading="lazy">
+                        </div>
+                        <div class="info">
+                            <h2>Metro 2033 Redux</h2>
+                            <div class="meta">
+                                <span>📅 2014</span>
+                                <span class="badge">GOG</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card" data-name="deus ex: human revolution - director's cut" data-year="2013" data-store="GOG">
+                        <div class="img-container">
+                            <img src="img/deus-ex-human-revolution-directors-cut_cover.jpg" class="cover" loading="lazy">
+                            <img src="img/deus-ex-human-revolution-directors-cut_screen.jpg" class="screenshot" loading="lazy">
+                        </div>
+                        <div class="info">
+                            <h2>Deus Ex: Human Revolution - Director's Cut</h2>
+                            <div class="meta">
+                                <span>📅 2013</span>
+                                <span class="badge">GOG</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card" data-name="bioshock infinite: clash in the clouds" data-year="2013" data-store="GOG">
+                        <div class="img-container">
+                            <img src="img/bioshock-infinite-clash-in-the-clouds_cover.jpg" class="cover" loading="lazy">
+                            <img src="img/bioshock-infinite-clash-in-the-clouds_screen.jpg" class="screenshot" loading="lazy">
+                        </div>
+                        <div class="info">
+                            <h2>Bioshock Infinite: Clash in the Clouds</h2>
+                            <div class="meta">
+                                <span>📅 2013</span>
+                                <span class="badge">GOG</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card" data-name="bioshock 2" data-year="2010" data-store="GOG">
+                        <div class="img-container">
+                            <img src="img/bioshock-2_cover.jpg" class="cover" loading="lazy">
+                            <img src="img/bioshock-2_screen.jpg" class="screenshot" loading="lazy">
+                        </div>
+                        <div class="info">
+                            <h2>BioShock 2</h2>
+                            <div class="meta">
+                                <span>📅 2010</span>
+                                <span class="badge">GOG</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card" data-name="bioshock 2 remastered" data-year="2016" data-store="GOG">
+                        <div class="img-container">
+                            <img src="img/bioshock-2-remastered_cover.jpg" class="cover" loading="lazy">
+                            <img src="img/bioshock-2-remastered_screen.jpg" class="screenshot" loading="lazy">
+                        </div>
+                        <div class="info">
+                            <h2>BioShock 2 Remastered</h2>
+                            <div class="meta">
+                                <span>📅 2016</span>
+                                <span class="badge">GOG</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card" data-name="hive jump 2: survivors" data-year="2024" data-store="GOG">
+                        <div class="img-container">
+                            <img src="img/hive-jump-2-survivors_cover.jpg" class="cover" loading="lazy">
+                            <img src="img/hive-jump-2-survivors_screen.jpg" class="screenshot" loading="lazy">
+                        </div>
+                        <div class="info">
+                            <h2>Hive Jump 2: Survivors</h2>
+                            <div class="meta">
+                                <span>📅 2024</span>
+                                <span class="badge">GOG</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card" data-name="tomb raider: legend" data-year="2006" data-store="GOG">
+                        <div class="img-container">
+                            <img src="img/tomb-raider-legend_cover.jpg" class="cover" loading="lazy">
+                            <img src="img/tomb-raider-legend_screen.jpg" class="screenshot" loading="lazy">
+                        </div>
+                        <div class="info">
+                            <h2>Tomb Raider: Legend</h2>
+                            <div class="meta">
+                                <span>📅 2006</span>
+                                <span class="badge">GOG</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card" data-name="bioshock" data-year="2007" data-store="GOG">
+                        <div class="img-container">
+                            <img src="img/bioshock_cover.jpg" class="cover" loading="lazy">
+                            <img src="img/bioshock_screen.jpg" class="screenshot" loading="lazy">
+                        </div>
+                        <div class="info">
+                            <h2>BioShock</h2>
+                            <div class="meta">
+                                <span>📅 2007</span>
+                                <span class="badge">GOG</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card" data-name="bioshock remastered" data-year="2016" data-store="GOG">
+                        <div class="img-container">
+                            <img src="img/bioshock-remastered_cover.jpg" class="cover" loading="lazy">
+                            <img src="img/bioshock-remastered_screen.jpg" class="screenshot" loading="lazy">
+                        </div>
+                        <div class="info">
+                            <h2>BioShock Remastered</h2>
+                            <div class="meta">
+                                <span>📅 2016</span>
+                                <span class="badge">GOG</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card" data-name="quake ii rtx" data-year="2019" data-store="GOG">
+                        <div class="img-container">
+                            <img src="img/quake-ii-rtx_cover.jpg" class="cover" loading="lazy">
+                            <img src="img/quake-ii-rtx_screen.jpg" class="screenshot" loading="lazy">
+                        </div>
+                        <div class="info">
+                            <h2>Quake II RTX</h2>
+                            <div class="meta">
+                                <span>📅 2019</span>
+                                <span class="badge">GOG</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card" data-name="shadow warrior" data-year="1997" data-store="GOG">
+                        <div class="img-container">
+                            <img src="img/shadow-warrior-classic-redux_cover.jpg" class="cover" loading="lazy">
+                            <img src="img/shadow-warrior-classic-redux_screen.jpg" class="screenshot" loading="lazy">
+                        </div>
+                        <div class="info">
+                            <h2>Shadow Warrior</h2>
+                            <div class="meta">
+                                <span>📅 1997</span>
+                                <span class="badge">GOG</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card" data-name="postal: classic and uncut" data-year="2003" data-store="GOG">
+                        <div class="img-container">
+                            <img src="img/postal-classic-and-uncut_cover.jpg" class="cover" loading="lazy">
+                            <img src="img/postal-classic-and-uncut_screen.jpg" class="screenshot" loading="lazy">
+                        </div>
+                        <div class="info">
+                            <h2>POSTAL: Classic and Uncut</h2>
+                            <div class="meta">
+                                <span>📅 2003</span>
+                                <span class="badge">GOG</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card" data-name="grim fandango remastered" data-year="2015" data-store="GOG">
+                        <div class="img-container">
+                            <img src="img/grim-fandango-remastered_cover.jpg" class="cover" loading="lazy">
+                            <img src="img/grim-fandango-remastered_screen.jpg" class="screenshot" loading="lazy">
+                        </div>
+                        <div class="info">
+                            <h2>Grim Fandango Remastered</h2>
+                            <div class="meta">
+                                <span>📅 2015</span>
+                                <span class="badge">GOG</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card" data-name="wolfenstein: the old blood" data-year="2015" data-store="Microsoft Store">
+                        <div class="img-container">
+                            <img src="img/wolfenstein-the-old-blood_cover.jpg" class="cover" loading="lazy">
+                            <img src="img/wolfenstein-the-old-blood_screen.jpg" class="screenshot" loading="lazy">
+                        </div>
+                        <div class="info">
+                            <h2>Wolfenstein: The Old Blood</h2>
+                            <div class="meta">
+                                <span>📅 2015</span>
+                                <span class="badge">Microsoft Store</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card" data-name="doom eternal" data-year="2020" data-store="Microsoft Store">
+                        <div class="img-container">
+                            <img src="img/doom-eternal_cover.jpg" class="cover" loading="lazy">
+                            <img src="img/doom-eternal_screen.jpg" class="screenshot" loading="lazy">
+                        </div>
+                        <div class="info">
+                            <h2>DOOM Eternal</h2>
+                            <div class="meta">
+                                <span>📅 2020</span>
+                                <span class="badge">Microsoft Store</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card" data-name="doom eternal (battlemode)" data-year="2020" data-store="Microsoft Store">
+                        <div class="img-container">
+                            <img src="img/doom-eternal-battlemode_cover.jpg" class="cover" loading="lazy">
+                            <img src="img/doom-eternal-battlemode_screen.jpg" class="screenshot" loading="lazy">
+                        </div>
+                        <div class="info">
+                            <h2>DOOM Eternal (BATTLEMODE)</h2>
+                            <div class="meta">
+                                <span>📅 2020</span>
+                                <span class="badge">Microsoft Store</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card" data-name="fallout 76" data-year="2018" data-store="Microsoft Store">
+                        <div class="img-container">
+                            <img src="img/fallout-76_cover.jpg" class="cover" loading="lazy">
+                            <img src="img/fallout-76_screen.jpg" class="screenshot" loading="lazy">
+                        </div>
+                        <div class="info">
+                            <h2>Fallout 76</h2>
+                            <div class="meta">
+                                <span>📅 2018</span>
+                                <span class="badge">Microsoft Store</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card" data-name="minecraft" data-year="2009" data-store="Microsoft Store">
+                        <div class="img-container">
+                            <img src="img/minecraft_cover.jpg" class="cover" loading="lazy">
+                            <img src="img/minecraft_screen.jpg" class="screenshot" loading="lazy">
+                        </div>
+                        <div class="info">
+                            <h2>Minecraft</h2>
+                            <div class="meta">
+                                <span>📅 2009</span>
+                                <span class="badge">Microsoft Store</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card" data-name="minecraft" data-year="2009" data-store="Microsoft Store">
+                        <div class="img-container">
+                            <img src="img/minecraft_cover.jpg" class="cover" loading="lazy">
+                            <img src="img/minecraft_screen.jpg" class="screenshot" loading="lazy">
+                        </div>
+                        <div class="info">
+                            <h2>Minecraft</h2>
+                            <div class="meta">
+                                <span>📅 2009</span>
+                                <span class="badge">Microsoft Store</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card" data-name="minecraft" data-year="2009" data-store="Microsoft Store">
+                        <div class="img-container">
+                            <img src="img/minecraft_cover.jpg" class="cover" loading="lazy">
+                            <img src="img/minecraft_screen.jpg" class="screenshot" loading="lazy">
+                        </div>
+                        <div class="info">
+                            <h2>Minecraft</h2>
+                            <div class="meta">
+                                <span>📅 2009</span>
+                                <span class="badge">Microsoft Store</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card" data-name="minecraft" data-year="2009" data-store="Microsoft Store">
+                        <div class="img-container">
+                            <img src="img/minecraft_cover.jpg" class="cover" loading="lazy">
+                            <img src="img/minecraft_screen.jpg" class="screenshot" loading="lazy">
+                        </div>
+                        <div class="info">
+                            <h2>Minecraft</h2>
+                            <div class="meta">
+                                <span>📅 2009</span>
+                                <span class="badge">Microsoft Store</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card" data-name="microsoft solitaire collection" data-year="2016" data-store="Microsoft Store">
+                        <div class="img-container">
+                            <img src="img/microsoft-solitaire-collection_cover.jpg" class="cover" loading="lazy">
+                            <img src="img/microsoft-solitaire-collection_screen.jpg" class="screenshot" loading="lazy">
+                        </div>
+                        <div class="info">
+                            <h2>Microsoft Solitaire Collection</h2>
+                            <div class="meta">
+                                <span>📅 2016</span>
+                                <span class="badge">Microsoft Store</span>
+                            </div>
+                        </div>
+                    </div></div>
+
+        <script>
+            function updateSlider() {
+                const min = document.getElementById('minRange'), max = document.getElementById('maxRange'), fill = document.getElementById('sliderFill');
+                if (parseInt(min.value) > parseInt(max.value)) { let t = min.value; min.value = max.value; max.value = t; }
+                const minP = ((min.value - min.min) / (min.max - min.min)) * 100, maxP = ((max.value - min.min) / (min.max - min.min)) * 100;
+                fill.style.left = minP + "%"; fill.style.width = (maxP - minP) + "%";
+                document.getElementById('yearLabel').innerText = min.value + " - " + max.value;
+                applyFilters();
+            }
+
+            function toggleStore(btn) { btn.classList.toggle('active'); applyFilters(); }
+            
+            function filterAll() {
+                document.querySelectorAll('.store-btn:not(.all-btn)').forEach(b => b.classList.add('active'));
+                applyFilters();
+            }
+
+            function applyFilters() {
+                const cards = Array.from(document.getElementsByClassName('card'));
+                const minYear = parseInt(document.getElementById('minRange').value), maxYear = parseInt(document.getElementById('maxRange').value);
+                const search = document.getElementById('searchBox').value.toLowerCase();
+                const activeStores = Array.from(document.querySelectorAll('.store-btn.active')).map(b => b.innerText.toLowerCase());
+                const sort = document.getElementById('sortOrder').value;
+
+                let visible = 0;
+                cards.forEach(card => {
+                    const matches = (card.dataset.year >= minYear && card.dataset.year <= maxYear) &&
+                                    card.dataset.name.includes(search) &&
+                                    activeStores.includes(card.dataset.store.toLowerCase());
+                    card.style.display = matches ? 'block' : 'none';
+                    if(matches) visible++;
+                });
+                document.getElementById('gameCount').innerText = visible;
+
+                cards.sort((a, b) => {
+                    if(sort === 'az') return a.dataset.name.localeCompare(b.dataset.name);
+                    if(sort === 'za') return b.dataset.name.localeCompare(a.dataset.name);
+                    if(sort === 'new') return b.dataset.year - a.dataset.year;
+                    return a.dataset.year - b.dataset.year;
+                });
+                cards.forEach(c => document.getElementById('gameGrid').appendChild(c));
+            }
+            window.onload = updateSlider;
+        </script>
+    </body>
+    </html>
+    
